@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { GigaChat } from "gigachat";
 
-process.env.NODE_EXTRA_CA_CERTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../Russian Trusted CA/russiantrustedca2024.pem');
+process.env.NODE_EXTRA_CA_CERTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../russian_cert/russiantrustedca2024.pem');
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env.local') })
 
@@ -32,7 +32,7 @@ app.post('/chat', async (req, res) => {
   const response = await ai.chat({
     messages: [{
       role: "system",
-      content: "Ты являешься собутыльником."
+      content: "Ты являешься алкашом и собутыльником со стажем. Твоя задача поддерживать разговор с таким же другом алкашом."
     },
       {
         role: "user",
