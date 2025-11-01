@@ -4,9 +4,17 @@ const messages = document.getElementById('messages') as HTMLDivElement;
 
 // имитация ответа ИИ
 async function askAI(prompt: string): Promise<string> {
-  // тут можно подключить реальный API (fetch к своему backend)
-  await new Promise(r => setTimeout(r, 500)); // имитация задержки
-  return `🤖 Ответ ИИ на: "${prompt}"`;
+  const response = await fetch(`http://localhost:3000/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+    })
+  })
+
+  const data = await response.json();
+
+  return data.reply;
 }
 
 chatForm.addEventListener('submit', async (e) => {
