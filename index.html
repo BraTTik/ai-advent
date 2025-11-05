@@ -55,12 +55,54 @@
     button:hover {
       background: #005fcc;
     }
+
+    #chat-area {
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+      gap: 1rem;
+      height: 100%;
+    }
+
+    #messages {
+      flex: 1;
+    }
+
+    #mood-wrapper {
+      margin-top: 16px;
+      margin-bottom: 16px;
+      width: 30px;
+      flex-grow:1;
+      max-width: 30px;
+      min-height: 300px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #eee;
+      display: flex;
+      align-items: flex-end; /* чтобы бар рос снизу */
+      padding: 4px;
+      box-sizing: border-box;
+    }
+
+    #mood-bar {
+      width: 100%;
+      background: linear-gradient(to top, #ff4500, #ffd000, #00c853);
+      border-radius: 4px;
+      height: 50%; /* сюда будем подставлять уровень */
+      transition: height .3s ease;
+    }
   </style>
 </head>
 <body>
 <h1>🍻 AI Собутыльник</h1>
 
-<div id="messages"></div>
+<div id="chat-area">
+  <div id="messages"></div>
+
+  <div id="mood-wrapper">
+    <div id="mood-bar"></div>
+  </div>
+</div>
 
 <form id="chat-form">
   <input id="chat-input" type="text" placeholder="Введите сообщение..." />

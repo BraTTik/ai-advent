@@ -2,7 +2,18 @@ const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const input = document.getElementById('chat-input') as HTMLInputElement;
 const messages = document.getElementById('messages') as HTMLDivElement;
 
-// имитация ответа ИИ
+type Reply = {
+  level: number;
+  speech: string;
+}
+
+function setMoodLevel(level: number) {
+  const bar = document.getElementById("mood-bar");
+  if (!bar) return;
+  bar.style.height = level + "%";
+}
+
+
 async function askAI(prompt: string): Promise<string> {
   const response = await fetch(`http://localhost:3000/chat`, {
     method: 'POST',
@@ -26,7 +37,10 @@ chatForm.addEventListener('submit', async (e) => {
   input.value = '';
 
   const aiReply = await askAI(userMsg);
-  appendMessage('🤖', aiReply);
+  console.log(aiReply);
+  const reply = JSON.parse(aiReply) as Reply;
+  setMoodLevel(reply.level)
+  appendMessage('🤖', reply.speech);
 });
 
 function appendMessage(sender: string, text: string) {
