@@ -25,33 +25,115 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// const messages = [
+//   {
+//   role: "system",
+//   content: `
+//       Тебе будет приходит задания на логику. Твоя задача решить её при помощи совета, состоящей из компании алкашей - физик,
+//       грузчика и Basic-программиста. При это ты должен прислать рассуждения каждого члена при решении задания. Не надо давать советы по решению задания.
+//       Ответ нужно вернуть ввиде валидного-JSON:
+//         {
+//           "persons": [
+//             {
+//               "id": "fizruk" // id физрука,
+//               "content": "string" // рассуждения физрука при решении задания
+//             },
+//             {
+//               "id": "loader" // id грузчика,
+//               "content": "string" // рассуждения грузчика при решении задания
+//             },
+//             {
+//               "id": "programmer" // id программиста,
+//               "content": "string" // рассуждения программиста при решении задания
+//             },
+//           ],
+//           "result": "string" // решение задания
+//         }
+//
+//       Важно! Строго! Перед отправкой убедись, что JSON валидный и что все двойные кавычки на своих местах!.
+//       `
+//   },
+// ]
+
 // Пример эндпоинта для чата
 app.post('/chat', async (req, res) => {
-  const { prompt } = req.body;
+  try {
+    const { prompt } = req.body;
 
-  const response = await ai.chat({
-    messages: [
-        {
-        role: "system",
-        content: `
-          Ты являешься алкашом и собутыльником со стажем. Твоя задача поддерживать разговор с таким же другом алкашом и говорить тосты.
-          Твой ответ должен быть валидным JSON-объектом строго такого вида
-          {
-            "level": "number", // уровень настроения
-            "speech": "string" // тост
-          }
-          Добавляй уровень настроения по 100 бальной шкале, в зависимости от выпитого.
-          Не нужно добавлять поля или удалять, всегда отвечай таким JSON-объектом.
-        `
-      },
-      {
-        role: "user",
-        content: prompt
-      }
-    ]
-  })
+    // 1. Мета-агент планирует экспертов
+    const plannerPrompt = `
+    Ты - координатор совета экспертов. 
+    Тебе дают логическую задачу.
 
-  res.json({ reply: response.choices[0].message.content ?? "" });
+    1) Определи, какие эксперты нужны для обсуждения (от 1 до 6).
+    2) Описывай экспертов нестандартно, можно смешно, можно абсурдно, но чтобы роли были понятны.
+    3) Не решай задачу сам.
+
+    Верни EДИНСТВЕННЫЙ валидный JSON:
+    {
+      "experts": [
+        { "id": "string", "role": "string", "description": "string" }
+      ]
+    }
+    `;
+
+    const planResponse = await ai.chat({
+      messages: [
+        { role: "system", content: plannerPrompt },
+        { role: "user", content: prompt }
+      ]
+    });
+
+    const plan = JSON.parse(planResponse.choices[0].message.content as string);
+
+    console.log(plan);
+    // 2. Запускаем каждого эксперта
+    const expertResults = [];
+    for (const expert of plan.experts) {
+      const expertPrompt = `
+      Ты эксперт: ${expert.role}.
+      Описание: ${expert.description}.
+      Твоя задача — рассуждать и комментировать решение задачи.
+      Не давай итогового ответа, только свои мысли.
+      Верни просто текст размышлений.
+      `;
+
+      const expertResponse = await ai.chat({
+        messages: [
+          { role: "system", content: expertPrompt },
+          { role: "user", content: prompt }
+        ]
+      });
+
+      expertResults.push({
+        id: expert.id,
+        role: expert.role,
+        content: expertResponse.choices[0].message.content
+      });
+    }
+
+    // 3. Финальный агент — собирает вывод
+    const finalPrompt = `
+    Ты получаешь рассуждения экспертов.
+    Проанализируй их и сделай итоговое решение задачи.
+    `;
+
+    const finalResponse = await ai.chat({
+      messages: [
+        { role: "system", content: finalPrompt },
+        { role: "user", content: JSON.stringify(expertResults) }
+      ]
+    });
+
+
+    const final = { experts: expertResults, result: finalResponse.choices[0].message.content }
+    console.log(final)
+    res.json(final);
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Ошибка при обработке запроса" });
+  }
 });
 
 app.listen(PORT, () => {
