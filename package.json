@@ -18,9 +18,11 @@
     "vite": "^7.1.7"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "gigachat": "^0.0.16"
+    "gigachat": "^0.0.16",
+    "openai": "^6.8.1"
   }
 }

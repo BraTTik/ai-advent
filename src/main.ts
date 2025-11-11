@@ -1,18 +1,22 @@
 const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const input = document.getElementById('chat-input') as HTMLInputElement;
 const messages = document.getElementById('messages') as HTMLDivElement;
-
-type Expert = {
-  id: string;
-  role: string
-  content: string;
-}
+const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
 
 type Reply = {
-  experts: Expert[];
-  result: string;
+  model: string;
+  chat: string;
 }
 
+
+const modelList = ["MiniMaxAI/MiniMax-M2:novita", "meta-llama/Llama-3.1-8B-Instruct:novita", "HuggingFaceTB/SmolLM3-3B:hf-inference"]
+
+modelList.forEach(m => {
+  const opt = document.createElement("option");
+  opt.value = m;
+  opt.textContent = m;
+  modelSelect.appendChild(opt);
+});
 
 async function askAI(prompt: string): Promise<Reply> {
   const response = await fetch(`http://localhost:3000/chat`, {
@@ -20,39 +24,25 @@ async function askAI(prompt: string): Promise<Reply> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt,
+      model: modelSelect.value
     })
   })
 
   const data = await response.json() as Reply;
 
-  console.log(data);
   return data;
 }
 
 function formatReply(reply: Reply) {
-  let text = ``;
-
-  for (const expert of reply.experts) {
-    text += `
-    <div>
-      <div>
-       <strong>${expert.role}: </strong>
-      </div>
-      <p>
-        ${expert.content}
-      </p>
-    </div>
-    <br />
-    `
-  }
+  let text = "";
 
   text += `
    <div>
       <div>
-       <strong>Решение: </strong>
+       <strong>${reply.model}: </strong>
       </div>
       <p>
-        ${reply.result}
+        ${reply.chat}
       </p>
    </div>
   `
@@ -80,3 +70,5 @@ function appendMessage(sender: string, text: string) {
   messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
 }
+
+
