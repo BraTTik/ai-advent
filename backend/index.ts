@@ -58,75 +58,22 @@ app.use(express.json());
 // Пример эндпоинта для чата
 app.post('/chat', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, temperature = 0.7 } = req.body;
 
-    // 1. Мета-агент планирует экспертов
-    const plannerPrompt = `
-    Ты - координатор совета экспертов. 
-    Тебе дают логическую задачу.
-
-    1) Определи, какие эксперты нужны для обсуждения (от 1 до 6).
-    2) Описывай экспертов нестандартно, можно смешно, можно абсурдно, но чтобы роли были понятны.
-    3) Не решай задачу сам.
-
-    Верни EДИНСТВЕННЫЙ валидный JSON:
-    {
-      "experts": [
-        { "id": "string", "role": "string", "description": "string" }
-      ]
-    }
-    `;
-
-    const planResponse = await ai.chat({
-      messages: [
-        { role: "system", content: plannerPrompt },
-        { role: "user", content: prompt }
-      ]
-    });
-
-    const plan = JSON.parse(planResponse.choices[0].message.content as string);
-
-    console.log(plan);
-    // 2. Запускаем каждого эксперта
-    const expertResults = [];
-    for (const expert of plan.experts) {
-      const expertPrompt = `
-      Ты эксперт: ${expert.role}.
-      Описание: ${expert.description}.
-      Твоя задача — рассуждать и комментировать решение задачи.
-      Не давай итогового ответа, только свои мысли.
-      Верни просто текст размышлений.
-      `;
-
-      const expertResponse = await ai.chat({
-        messages: [
-          { role: "system", content: expertPrompt },
-          { role: "user", content: prompt }
-        ]
-      });
-
-      expertResults.push({
-        id: expert.id,
-        role: expert.role,
-        content: expertResponse.choices[0].message.content
-      });
-    }
-
-    // 3. Финальный агент — собирает вывод
     const finalPrompt = `
-    Ты получаешь рассуждения экспертов.
-    Проанализируй их и сделай итоговое решение задачи.
+     Ты личный помощник.
     `;
 
     const finalResponse = await ai.chat({
+      temperature,
       messages: [
         { role: "system", content: finalPrompt },
-        { role: "user", content: JSON.stringify(expertResults) }
+        { role: "user", content: prompt },
       ]
     });
 
 
-    const final = { experts: expertResults, result: finalResponse.choices[0].message.content }
+    const final = { result: finalResponse.choices[0].message.content }
     console.log(final)
     res.json(final);
 

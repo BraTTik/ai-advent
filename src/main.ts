@@ -1,6 +1,8 @@
 const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const input = document.getElementById('chat-input') as HTMLInputElement;
 const messages = document.getElementById('messages') as HTMLDivElement;
+const temperatureInput = document.getElementById('temperature') as HTMLInputElement;
+const moodValue = document.getElementById('temperature-value');
 
 type Expert = {
   id: string;
@@ -14,12 +16,13 @@ type Reply = {
 }
 
 
-async function askAI(prompt: string): Promise<Reply> {
+async function askAI(prompt: string, temperature: number): Promise<Reply> {
   const response = await fetch(`http://localhost:3000/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt,
+      temperature,
     })
   })
 
@@ -67,10 +70,10 @@ chatForm.addEventListener('submit', async (e) => {
   appendMessage('🧑‍💻', userMsg);
   input.value = '';
 
-  const aiReply = await askAI(userMsg);
+  const aiReply = await askAI(userMsg, Number(temperatureInput.value));
 
 
-  appendMessage('🤖', formatReply(aiReply));
+  appendMessage('🤖', aiReply.result);
 });
 
 function appendMessage(sender: string, text: string) {
@@ -80,3 +83,8 @@ function appendMessage(sender: string, text: string) {
   messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
 }
+
+temperatureInput?.addEventListener('input', () => {
+  if(!moodValue) return;
+  moodValue.textContent = temperatureInput!.value;
+});
