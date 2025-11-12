@@ -24,7 +24,11 @@ export class AIClient {
     this.config.model = model;
   }
 
-  async chat(messages: { role: "system" | "user" | "assistant"; content: string }[]) {
+  async chat(messages: { role: "system" | "user" | "assistant"; content: string }[]): Promise<{
+    content: string;
+    inputTokens: number;
+    outputTokens: number;
+  }> {
     const { provider, model, apiKey } = this.config;
 
     if (provider === "openai") {
@@ -33,7 +37,11 @@ export class AIClient {
         model,
         messages
       });
-      return completion.choices[0].message.content ?? "";
+      return {
+        content: completion.choices[0].message.content ?? "",
+        inputTokens: completion.usage?.prompt_tokens ?? 0,
+        outputTokens: completion.usage?.completion_tokens ?? 0
+      };
     }
 
     if (provider === "huggingface") {
@@ -42,13 +50,23 @@ export class AIClient {
         const result = await hf.chatCompletion({
           model,
           messages,
-          max_tokens: 200
         });
-        return result.choices[0]?.message?.content ?? "";
+        // HuggingFace может возвращать информацию о токенах в разных форматах
+        // Проверяем наличие usage или других полей
+        const inputTokens = (result as any).usage?.prompt_tokens ?? 
+                           (result as any).usage?.input_tokens ?? 0;
+        const outputTokens = (result as any).usage?.completion_tokens ?? 
+                            (result as any).usage?.generated_tokens ?? 0;
+        
+        return {
+          content: result.choices[0]?.message?.content ?? "",
+          inputTokens,
+          outputTokens
+        };
       } catch (e) {
         console.error(e);
+        throw e;
       }
-
     }
 
     throw new Error("Unknown provider");

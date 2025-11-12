@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { AIClient } from "./ai-client.ts";
+import { ChatSessionManager } from "./chat-session.ts";
 
 process.env.NODE_EXTRA_CA_CERTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../russian_cert/russiantrustedca2024.pem');
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -17,6 +18,8 @@ const ai = new AIClient({
   provider: "huggingface",
   model: "moonshotai/Kimi-K2-Thinking:novita"
 })
+
+const sessionManager = new ChatSessionManager();
 
 
 const app = express();
@@ -58,24 +61,57 @@ app.use(express.json());
 // Пример эндпоинта для чата
 app.post('/chat', async (req, res) => {
   try {
-    const { prompt, model = "moonshotai/Kimi-K2-Thinking:novita" } = req.body;
+    const { 
+      prompt, 
+      model = "moonshotai/Kimi-K2-Thinking:novita",
+      sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+    } = req.body;
 
-    // 1. Мета-агент планирует экспертов
+    // System prompt для ассистента
     const plannerPrompt = `
       Ты личный помощник. Отвечай на русском языке.
     `;
 
-    ai.setModel(model);
-    const response = await ai.chat([
-        { role: "system", content: plannerPrompt },
-        { role: "user", content: prompt }
-      ]
-    );
+    // Получаем или создаем сессию с системным промптом
+    sessionManager.getSession(sessionId, plannerPrompt);
+    
+    // Добавляем сообщение пользователя в историю
+    sessionManager.addUserMessage(sessionId, prompt);
 
-    res.json({ chat: response, model });
+    // Получаем всю историю сообщений для контекста
+    const messages = sessionManager.getMessages(sessionId);
+
+    ai.setModel(model);
+    const response = await ai.chat(messages);
+
+    // Добавляем ответ ассистента в историю
+    sessionManager.addAssistantMessage(sessionId, response.content);
+
+    res.json({ 
+      chat: response.content, 
+      model,
+      sessionId,
+      inputTokens: response.inputTokens,
+      outputTokens: response.outputTokens
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Ошибка при обработке запроса" });
+  }
+});
+
+// Эндпоинт для очистки сессии
+app.post('/chat/clear', (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId обязателен" });
+    }
+    sessionManager.clearSession(sessionId);
+    res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Ошибка при очистке сессии" });
   }
 });
 
