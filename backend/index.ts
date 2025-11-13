@@ -87,6 +87,10 @@ app.post('/chat', async (req, res) => {
     // Добавляем ответ ассистента в историю
     sessionManager.addAssistantMessage(sessionId, response.content);
 
+    await sessionManager.compressIfNeeded(sessionId, (history) =>
+      ai.summarizeConversation(history)
+    );
+
     res.json({ 
       chat: response.content, 
       model,

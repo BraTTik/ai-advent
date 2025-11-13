@@ -4,6 +4,10 @@ export type ChatMessage = {
 };
 
 export class ChatSessionManager {
+  private readonly compressionThreshold = 10;
+  private readonly recentMessagesToKeep = 6;
+  private readonly summaryPrefix = "Краткое резюме предыдущего диалога:";
+
   private sessions: Map<string, ChatMessage[]> = new Map();
   private systemPrompts: Map<string, string> = new Map();
 
@@ -58,6 +62,70 @@ export class ChatSessionManager {
   clearSession(sessionId: string): void {
     this.sessions.delete(sessionId);
     this.systemPrompts.delete(sessionId);
+  }
+
+  /**
+   * Сжать историю, если накопилось достаточно сообщений
+   */
+  async compressIfNeeded(
+    sessionId: string,
+    compressor: (messages: ChatMessage[]) => Promise<string>
+  ): Promise<boolean> {
+    const sessionMessages = this.sessions.get(sessionId);
+    if (!sessionMessages) {
+      return false;
+    }
+
+    const systemPrompt = this.systemPrompts.get(sessionId);
+
+    // Удаляем предыдущие резюме, чтобы не копить их
+    const cleanedMessages = sessionMessages.filter(
+      (message, index) =>
+        !(
+          message.role === "system" &&
+          message.content.startsWith(this.summaryPrefix) &&
+          (!systemPrompt || index > 0)
+        )
+    );
+
+    const startIndex = systemPrompt ? 1 : 0;
+    const conversationMessages = cleanedMessages.slice(startIndex);
+
+    if (conversationMessages.length < this.compressionThreshold) {
+      this.sessions.set(sessionId, cleanedMessages);
+      return false;
+    }
+
+    const cutoffIndex = Math.max(
+      conversationMessages.length - this.recentMessagesToKeep,
+      0
+    );
+
+    const messagesForCompression = conversationMessages.slice(0, cutoffIndex);
+    const recentMessages = conversationMessages.slice(cutoffIndex);
+
+    if (messagesForCompression.length === 0) {
+      this.sessions.set(sessionId, cleanedMessages);
+      return false;
+    }
+
+    const summary = await compressor(messagesForCompression);
+    const updatedMessages: ChatMessage[] = [];
+
+    if (systemPrompt) {
+      updatedMessages.push({ role: "system", content: systemPrompt });
+    }
+
+    if (summary) {
+      updatedMessages.push({
+        role: "system",
+        content: `${this.summaryPrefix}\n${summary}`
+      });
+    }
+
+    updatedMessages.push(...recentMessages);
+    this.sessions.set(sessionId, updatedMessages);
+    return true;
   }
 
   /**

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { InferenceClient } from "@huggingface/inference";
+import type { ChatMessage } from "./chat-session.ts";
 
 export type AIProvider = "openai" | "huggingface";
 
@@ -24,7 +25,7 @@ export class AIClient {
     this.config.model = model;
   }
 
-  async chat(messages: { role: "system" | "user" | "assistant"; content: string }[]): Promise<{
+  async chat(messages: ChatMessage[]): Promise<{
     content: string;
     inputTokens: number;
     outputTokens: number;
@@ -65,6 +66,61 @@ export class AIClient {
         };
       } catch (e) {
         console.error(e);
+        throw e;
+      }
+    }
+
+    throw new Error("Unknown provider");
+  }
+
+  async summarizeConversation(messages: ChatMessage[]): Promise<string> {
+    const { provider, model, apiKey } = this.config;
+
+    if (messages.length === 0) {
+      return "";
+    }
+
+    const conversationText = messages
+      .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+      .join("\n\n");
+
+    const summaryPrompt: ChatMessage[] = [
+      {
+        role: "system",
+        content:
+          "Ты — помощник, который сжимает историю диалога в краткое резюме. Сохрани ключевые факты, действующих лиц и договорённости. Ответь на русском языке, не упоминай, что это резюме."
+      },
+      {
+        role: "user",
+        content: `Суммаризируй следующий диалог:\n\n${conversationText}`
+      }
+    ];
+
+    if (provider === "openai") {
+      const openai = new OpenAI({ apiKey });
+      const completion = await openai.chat.completions.create({
+        model,
+        messages: summaryPrompt,
+        max_tokens: 256,
+        temperature: 0.2
+      });
+
+      return completion.choices[0].message.content?.trim() ?? "";
+    }
+
+    if (provider === "huggingface") {
+      const hf = new InferenceClient(apiKey);
+      try {
+        const result = await hf.chatCompletion({
+          model,
+          messages: summaryPrompt,
+          max_tokens: 256,
+          temperature: 0.2
+        });
+
+        return result.choices[0]?.message?.content?.trim() ?? "";
+      } catch (e) {
+        console.error("Ошибка при сжатии истории чата:", e);
         throw e;
       }
     }
