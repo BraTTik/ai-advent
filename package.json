@@ -13,6 +13,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/node": "^24.9.2",
+    "@types/dompurify": "^3.0.5",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.3",
     "vite": "^7.1.7"
@@ -23,6 +24,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "gigachat": "^0.0.16",
-    "openai": "^6.8.1"
+    "openai": "^6.8.1",
+    "dompurify": "^3.1.6",
+    "marked": "^15.0.11"
   }
 }

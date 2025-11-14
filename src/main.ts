@@ -1,3 +1,10 @@
+import { marked } from "marked";
+import DOMPurify from "dompurify";
+
+marked.setOptions({
+  breaks: true,
+  gfm: true
+});
 const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const input = document.getElementById('chat-input') as HTMLInputElement;
 const messages = document.getElementById('messages') as HTMLDivElement;
@@ -50,24 +57,23 @@ async function askAI(prompt: string): Promise<Reply> {
 }
 
 function formatReply(reply: Reply) {
-  let text = "";
+  const markdownHtml = marked.parse(reply.chat, { async: false }) as string;
 
-  text += `
-   <div>
-      <div>
+  return `
+   <div class="ai-reply">
+      <div class="ai-reply__header">
        <strong>${reply.model}: </strong>
       </div>
-      <p>
-        ${reply.chat}
-      </p>
+      <div class="ai-reply__content">
+        ${markdownHtml}
+      </div>
 
-      <p text-align="right">
+      <p class="ai-reply__meta" style="text-align:right;">
         <small>Входные токены: ${reply.inputTokens}</small><br />
         <small>Выходные токены: ${reply.outputTokens}</small><br />
       </p>
    </div>
-  `
-  return text;
+  `;
 }
 
 chatForm.addEventListener('submit', async (e) => {
@@ -81,13 +87,19 @@ chatForm.addEventListener('submit', async (e) => {
   const aiReply = await askAI(userMsg);
 
 
-  appendMessage('🤖', formatReply(aiReply));
+  appendMessage('🤖', formatReply(aiReply), true);
 });
 
-function appendMessage(sender: string, text: string) {
+function appendMessage(sender: string, text: string, isHtml: boolean = false) {
   const msg = document.createElement('div');
   msg.className = 'message';
-  msg.innerHTML = `${sender} ${text}`;
+
+  if (isHtml) {
+    msg.innerHTML = DOMPurify.sanitize(`${sender} ${text}`);
+  } else {
+    msg.textContent = `${sender} ${text}`;
+  }
+
   messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
 }
