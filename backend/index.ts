@@ -73,19 +73,19 @@ app.post('/chat', async (req, res) => {
     `;
 
     // Получаем или создаем сессию с системным промптом
-    sessionManager.getSession(sessionId, plannerPrompt);
+    await sessionManager.getSession(sessionId, plannerPrompt);
     
     // Добавляем сообщение пользователя в историю
-    sessionManager.addUserMessage(sessionId, prompt);
+    await sessionManager.addUserMessage(sessionId, prompt);
 
     // Получаем всю историю сообщений для контекста
-    const messages = sessionManager.getMessages(sessionId);
+    const messages = await sessionManager.getMessages(sessionId);
 
     ai.setModel(model);
     const response = await ai.chat(messages);
 
     // Добавляем ответ ассистента в историю
-    sessionManager.addAssistantMessage(sessionId, response.content);
+    await sessionManager.addAssistantMessage(sessionId, response.content);
 
     await sessionManager.compressIfNeeded(sessionId, (history) =>
       ai.summarizeConversation(history)
@@ -105,13 +105,13 @@ app.post('/chat', async (req, res) => {
 });
 
 // Эндпоинт для очистки сессии
-app.post('/chat/clear', (req, res) => {
+app.post('/chat/clear', async (req, res) => {
   try {
     const { sessionId } = req.body;
     if (!sessionId) {
       return res.status(400).json({ error: "sessionId обязателен" });
     }
-    sessionManager.clearSession(sessionId);
+    await sessionManager.clearSession(sessionId);
     res.json({ success: true });
   } catch (e) {
     console.error(e);
