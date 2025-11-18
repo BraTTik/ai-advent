@@ -16,7 +16,8 @@ dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 const ai = new AIClient({
   apiKey: process.env.HF_API_KEY!,
   provider: "huggingface",
-  model: "moonshotai/Kimi-K2-Thinking:novita"
+  model: "moonshotai/Kimi-K2-Thinking:novita",
+  weatherMcpUrl: process.env.WEATHER_MCP_URL ?? `http://localhost:${process.env.WEATHER_MCP_PORT ?? 3333}/mcp`
 })
 
 const sessionManager = new ChatSessionManager();
@@ -28,35 +29,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// const messages = [
-//   {
-//   role: "system",
-//   content: `
-//       Тебе будет приходит задания на логику. Твоя задача решить её при помощи совета, состоящей из компании алкашей - физик,
-//       грузчика и Basic-программиста. При это ты должен прислать рассуждения каждого члена при решении задания. Не надо давать советы по решению задания.
-//       Ответ нужно вернуть ввиде валидного-JSON:
-//         {
-//           "persons": [
-//             {
-//               "id": "fizruk" // id физрука,
-//               "content": "string" // рассуждения физрука при решении задания
-//             },
-//             {
-//               "id": "loader" // id грузчика,
-//               "content": "string" // рассуждения грузчика при решении задания
-//             },
-//             {
-//               "id": "programmer" // id программиста,
-//               "content": "string" // рассуждения программиста при решении задания
-//             },
-//           ],
-//           "result": "string" // решение задания
-//         }
-//
-//       Важно! Строго! Перед отправкой убедись, что JSON валидный и что все двойные кавычки на своих местах!.
-//       `
-//   },
-// ]
+
+const weatherRegex = /(?:погода|weather)/i;
+
+function isWeather(input: string): boolean {
+  return weatherRegex.test(input);
+}
 
 // Пример эндпоинта для чата
 app.post('/chat', async (req, res) => {
@@ -77,6 +55,44 @@ app.post('/chat', async (req, res) => {
     
     // Добавляем сообщение пользователя в историю
     await sessionManager.addUserMessage(sessionId, prompt);
+
+    const weatherLocation = isWeather(prompt);
+    if (weatherLocation) {
+      try {
+        const weatherAgent = new AIClient({
+          apiKey: process.env.HF_API_KEY!,
+          model,
+          provider: "huggingface",
+        });
+        const location = await weatherAgent.chat([
+          {
+            role: "system",
+            content: `
+              В тексте может содержаться место, координаты или индекс. Верни это одним словом для в именительном падеже, для координат два числа через запятую.
+              Например:
+                для текста "Погода в Москве" ответ должен быть Москва,
+                для координат 23.323,39.882,
+                индекс просто 117556
+          `
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ])
+
+        console.log(location.content)
+        const weather = await ai.getWeather(location.content);
+        if (weather.summary) {
+          await sessionManager.addSystemMessage(
+            sessionId,
+            `Актуальные данные о погоде для ${weatherLocation}:\n${weather.summary}`
+          );
+        }
+      } catch (weatherError) {
+        console.error("Не удалось получить погоду через MCP:", weatherError);
+      }
+    }
 
     // Получаем всю историю сообщений для контекста
     const messages = await sessionManager.getMessages(sessionId);

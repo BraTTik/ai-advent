@@ -203,6 +203,15 @@ export class ChatSessionManager {
   }
 
   /**
+   * Добавить системное сообщение в сессию
+   */
+  async addSystemMessage(sessionId: string, content: string): Promise<void> {
+    const messages = await this.getSession(sessionId);
+    messages.push({ role: "system", content });
+    await this.saveSession(sessionId);
+  }
+
+  /**
    * Добавить сообщение ассистента в сессию
    */
   async addAssistantMessage(sessionId: string, content: string): Promise<void> {

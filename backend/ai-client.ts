@@ -1,5 +1,8 @@
 import OpenAI from "openai";
 import { InferenceClient } from "@huggingface/inference";
+import { Client as McpClient } from "@modelcontextprotocol/sdk/client";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { ChatMessage } from "./chat-session.ts";
 
 export type AIProvider = "openai" | "huggingface";
@@ -8,13 +11,21 @@ interface AIClientConfig {
   provider: AIProvider;
   model: string;
   apiKey: string;
+  weatherMcpUrl?: string;
+  weatherToolName?: string;
 }
 
 export class AIClient {
   private config: AIClientConfig;
+  private weatherMcpUrl?: string;
+  private weatherToolName: string;
+  private weatherClient?: McpClient;
+  private weatherTransport?: StreamableHTTPClientTransport;
 
   constructor(config: AIClientConfig) {
     this.config = config;
+    this.weatherMcpUrl = config.weatherMcpUrl ?? process.env.WEATHER_MCP_URL;
+    this.weatherToolName = config.weatherToolName ?? "current_weather";
   }
 
   setProvider(provider: AIProvider) {
@@ -126,5 +137,59 @@ export class AIClient {
     }
 
     throw new Error("Unknown provider");
+  }
+
+  private async ensureWeatherClient(): Promise<McpClient> {
+    if (!this.weatherMcpUrl) {
+      throw new Error("Weather MCP URL is not configured");
+    }
+
+    if (this.weatherClient) {
+      return this.weatherClient;
+    }
+
+    const transport = new StreamableHTTPClientTransport(new URL(this.weatherMcpUrl));
+    const client = new McpClient({
+      name: "ai-weather-client",
+      version: "1.0.0",
+    });
+    await client.connect(transport);
+
+    this.weatherClient = client;
+    this.weatherTransport = transport;
+    return client;
+  }
+
+  async getWeather(location: string): Promise<{
+    summary: string;
+    structured?: CallToolResult["structuredContent"];
+  }> {
+    if (!location.trim()) {
+      throw new Error("Location is required");
+    }
+
+    const client = await this.ensureWeatherClient();
+    const result = (await client.callTool({
+      name: this.weatherToolName,
+      arguments: { location },
+    })) as CallToolResult;
+
+    const content = Array.isArray(result.content) ? result.content : [];
+
+    const summary = content
+      .map((chunk) => {
+        if (chunk.type === "text") {
+          return chunk.text;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+
+    return {
+      summary,
+      structured: result.structuredContent ?? undefined,
+    };
   }
 }
