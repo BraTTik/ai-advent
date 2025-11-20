@@ -25,7 +25,7 @@ let currentSessionId = localStorage.getItem('chatSessionId') ||
 localStorage.setItem('chatSessionId', currentSessionId);
 
 
-const modelList = ["MiniMaxAI/MiniMax-M2:novita", "meta-llama/Llama-3.1-8B-Instruct:novita", "HuggingFaceTB/SmolLM3-3B:hf-inference"]
+const modelList = ["CohereLabs/c4ai-command-r7b-arabic-02-2025:cohere"]
 
 modelList.forEach(m => {
   const opt = document.createElement("option");

@@ -17,7 +17,8 @@ const ai = new AIClient({
   apiKey: process.env.HF_API_KEY!,
   provider: "huggingface",
   model: "moonshotai/Kimi-K2-Thinking:novita",
-  weatherMcpUrl: process.env.WEATHER_MCP_URL ?? `http://localhost:${process.env.WEATHER_MCP_PORT ?? 3333}/mcp`
+  weatherMcpUrl: process.env.WEATHER_MCP_URL ?? `http://localhost:${process.env.WEATHER_MCP_PORT ?? 3333}/mcp`,
+  remindesMcpUrl: 'http://localhost:4000/mcp',
 })
 
 const sessionManager = new ChatSessionManager();
@@ -41,7 +42,7 @@ app.post('/chat', async (req, res) => {
   try {
     const { 
       prompt, 
-      model = "moonshotai/Kimi-K2-Thinking:novita",
+      model = "CohereLabs/c4ai-command-r7b-arabic-02-2025:cohere",
       sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
     } = req.body;
 
@@ -55,44 +56,6 @@ app.post('/chat', async (req, res) => {
     
     // Добавляем сообщение пользователя в историю
     await sessionManager.addUserMessage(sessionId, prompt);
-
-    const weatherLocation = isWeather(prompt);
-    if (weatherLocation) {
-      try {
-        const weatherAgent = new AIClient({
-          apiKey: process.env.HF_API_KEY!,
-          model,
-          provider: "huggingface",
-        });
-        const location = await weatherAgent.chat([
-          {
-            role: "system",
-            content: `
-              В тексте может содержаться место, координаты или индекс. Верни это одним словом для в именительном падеже, для координат два числа через запятую.
-              Например:
-                для текста "Погода в Москве" ответ должен быть Москва,
-                для координат 23.323,39.882,
-                индекс просто 117556
-          `
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ])
-
-        console.log(location.content)
-        const weather = await ai.getWeather(location.content);
-        if (weather.summary) {
-          await sessionManager.addSystemMessage(
-            sessionId,
-            `Актуальные данные о погоде для ${weatherLocation}:\n${weather.summary}`
-          );
-        }
-      } catch (weatherError) {
-        console.error("Не удалось получить погоду через MCP:", weatherError);
-      }
-    }
 
     // Получаем всю историю сообщений для контекста
     const messages = await sessionManager.getMessages(sessionId);

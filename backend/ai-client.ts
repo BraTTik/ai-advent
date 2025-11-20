@@ -7,12 +7,27 @@ import type { ChatMessage } from "./chat-session.ts";
 
 export type AIProvider = "openai" | "huggingface";
 
+function convertMcpToolsToHfTools(mcpTools: any[]) {
+  return mcpTools.map(tool => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description ?? "",
+      parameters: tool.inputSchema ?? {
+        type: "object",
+        properties: {}
+      }
+    }
+  }));
+}
+
 interface AIClientConfig {
   provider: AIProvider;
   model: string;
   apiKey: string;
   weatherMcpUrl?: string;
   weatherToolName?: string;
+  remindesMcpUrl?: string;
 }
 
 export class AIClient {
@@ -43,6 +58,11 @@ export class AIClient {
   }> {
     const { provider, model, apiKey } = this.config;
 
+
+    const weatherClient = await this.ensureWeatherClient();
+    const weatherTools = await weatherClient.listTools();
+
+
     if (provider === "openai") {
       const openai = new OpenAI({ apiKey });
       const completion = await openai.chat.completions.create({
@@ -62,6 +82,7 @@ export class AIClient {
         const result = await hf.chatCompletion({
           model,
           messages,
+          tools: convertMcpToolsToHfTools(weatherTools.tools)
         });
         // HuggingFace может возвращать информацию о токенах в разных форматах
         // Проверяем наличие usage или других полей
@@ -113,7 +134,7 @@ export class AIClient {
         model,
         messages: summaryPrompt,
         max_tokens: 256,
-        temperature: 0.2
+        temperature: 0,
       });
 
       return completion.choices[0].message.content?.trim() ?? "";
@@ -126,7 +147,7 @@ export class AIClient {
           model,
           messages: summaryPrompt,
           max_tokens: 256,
-          temperature: 0.2
+          temperature: 0.2,
         });
 
         return result.choices[0]?.message?.content?.trim() ?? "";
