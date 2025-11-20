@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "server": "node ./backend/index.ts",
-    "server:mcp": "npx tsx ./scripts/weather-mcp-server"
+    "server:mcp": "npx tsx ./scripts/weather-mcp-server",
+    "server:mcp:filesystem": "npx tsx ./scripts/filesystem-mcp-server"
   },
   "devDependencies": {
     "@types/axios": "^0.14.4",
@@ -28,8 +29,10 @@
     "dompurify": "^3.1.6",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "fast-glob": "^3.3.2",
     "gigachat": "^0.0.16",
     "marked": "^15.0.11",
-    "openai": "^6.8.1"
+    "openai": "^6.8.1",
+    "zod": "^3.22.4"
   }
 }

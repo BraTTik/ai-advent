@@ -25,7 +25,7 @@ let currentSessionId = localStorage.getItem('chatSessionId') ||
 localStorage.setItem('chatSessionId', currentSessionId);
 
 
-const modelList = ["CohereLabs/c4ai-command-a-03-2025:cohere"]
+const modelList = ["Qwen/Qwen2.5-7B-Instruct:together"]
 
 modelList.forEach(m => {
   const opt = document.createElement("option");

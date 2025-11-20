@@ -17,9 +17,39 @@ const ai = new AIClient({
   apiKey: process.env.HF_API_KEY!,
   provider: "openai",
   model: "Qwen/Qwen2.5-7B-Instruct:together",
-  weatherMcpUrl: process.env.WEATHER_MCP_URL ?? `http://localhost:${process.env.WEATHER_MCP_PORT ?? 3333}/mcp`,
-  remindesMcpUrl: 'http://localhost:4000/mcp',
-})
+});
+
+// Регистрируем MCP серверы
+(async () => {
+  try {
+    // Регистрируем weather MCP сервер
+    if (process.env.WEATHER_MCP_URL) {
+      const weatherPort = process.env.WEATHER_MCP_PORT ?? 3333;
+      await ai.registerMCP({
+        url: `${process.env.WEATHER_MCP_URL}:${weatherPort}/mcp`,
+        name: "weather",
+      });
+    }
+    // Регистрируем filesystem MCP сервер
+    const filesystemPort = process.env.FILESYSTEM_MCP_PORT ?? 3334;
+    if (process.env.FILESYSTEM_MCP_URL) {
+      await ai.registerMCP({
+        url: `${process.env.FILESYSTEM_MCP_URL}:${filesystemPort}/mcp`,
+        name: "filesystem",
+      });
+    }
+
+    // Регистрируем reminder MCP сервер (если нужен)
+    // if (process.env.REMINDER_MCP_URL) {
+    //   await ai.registerMCP({
+    //     url: process.env.REMINDER_MCP_URL,
+    //     name: "reminder",
+    //   });
+    // }
+  } catch (error) {
+    console.error("Ошибка при регистрации MCP серверов:", error);
+  }
+})();
 
 const sessionManager = new ChatSessionManager();
 
@@ -48,7 +78,7 @@ app.post('/chat', async (req, res) => {
 
     // System prompt для ассистента
     const plannerPrompt = `
-      Ты личный помощник. Отвечай на русском языке.
+      Ты личный помощник. Для ответов ВСЕГДА проверяй, можешь ли ты использовать доступные тебе инструменты. Если можешь, используй их. Отвечай на русском языке.
     `;
 
     // Получаем или создаем сессию с системным промптом
