@@ -15,8 +15,8 @@ dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 
 const ai = new AIClient({
   apiKey: process.env.HF_API_KEY!,
-  provider: "huggingface",
-  model: "moonshotai/Kimi-K2-Thinking:novita",
+  provider: "openai",
+  model: "Qwen/Qwen2.5-7B-Instruct:together",
   weatherMcpUrl: process.env.WEATHER_MCP_URL ?? `http://localhost:${process.env.WEATHER_MCP_PORT ?? 3333}/mcp`,
   remindesMcpUrl: 'http://localhost:4000/mcp',
 })
@@ -60,7 +60,8 @@ app.post('/chat', async (req, res) => {
     // Получаем всю историю сообщений для контекста
     const messages = await sessionManager.getMessages(sessionId);
 
-    ai.setModel(model);
+    // ai.setModel(model);
+    console.log("chat")
     const response = await ai.chat(messages);
 
     // Добавляем ответ ассистента в историю

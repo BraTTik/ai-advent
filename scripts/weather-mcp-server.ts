@@ -51,6 +51,8 @@ function createWeatherServer() {
       inputSchema: weatherSchema,
     },
     async ({ location }) => {
+
+      console.log({ location });
       if (!WEATHER_API_KEY) {
         throw new Error('Set WEATHER_API_KEY to query WeatherAPI');
       }
@@ -204,6 +206,7 @@ const ensureSessionTransport = async (req: Request, res: Response) => {
 const handlePost = async (req: Request, res: Response) => {
   try {
     const entry = await ensureSessionTransport(req, res);
+  
     if (!entry) {
       return;
     }

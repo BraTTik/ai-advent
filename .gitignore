@@ -23,6 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env.local
-
+api.txt
 # Chat sessions
 backend/sessions/

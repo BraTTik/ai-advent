@@ -21,6 +21,20 @@ function convertMcpToolsToHfTools(mcpTools: any[]) {
   }));
 }
 
+function convertMcpToolsToOpenAITools(mcpTools: any[]): any[] {
+  return mcpTools.map(tool => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description ?? "",
+      parameters: tool.inputSchema ?? {
+        type: "object",
+        properties: {}
+      }
+    }
+  }));
+}
+
 interface AIClientConfig {
   provider: AIProvider;
   model: string;
@@ -64,11 +78,14 @@ export class AIClient {
 
 
     if (provider === "openai") {
-      const openai = new OpenAI({ apiKey });
+      const openai = new OpenAI({ apiKey,   baseURL: "https://router.huggingface.co/v1", });
       const completion = await openai.chat.completions.create({
         model,
-        messages
+        messages,
+        tools: convertMcpToolsToOpenAITools(weatherTools.tools),
+        tool_choice: "auto",
       });
+      console.log(completion.choices[0].message.tool_calls)
       return {
         content: completion.choices[0].message.content ?? "",
         inputTokens: completion.usage?.prompt_tokens ?? 0,
