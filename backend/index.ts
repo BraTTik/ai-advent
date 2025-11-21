@@ -15,7 +15,7 @@ dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 
 const ai = new AIClient({
   apiKey: process.env.HF_API_KEY!,
-  provider: "openai",
+  provider: "huggingface",
   model: "Qwen/Qwen2.5-7B-Instruct:together",
 });
 
